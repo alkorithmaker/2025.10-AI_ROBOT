@@ -1,0 +1,104 @@
+// Helloworld.cpp : 이 파일에는 'main' 함수가 포함됩니다. 거기서 프로그램 실행이 시작되고 종료됩니다.
+//
+#include "opencv2/opencv.hpp"
+extern void show1();
+extern void show2();
+
+#include <iostream>
+
+/*
+int main()
+{   
+    std::cout << "Hello World! " << CV_VERSION << "\n";
+    // cv에 있는 matrix 객체에 이미지 읽는 함수
+    cv::Mat img = cv::imread("lenna.png");
+
+    if (img.empty()) {
+        // cerr 에러 발생하면 버퍼없이(빠름) 출력 
+        std::cerr << "이미지를 불러올 수 없습니다. 경로를 확인하세요!" << "\n";
+        return -1;
+    }
+
+    //cv::namedWindow("Lenna");
+    // 이미지를 화면에 띄우는 코드 추가(쓰래드)
+    cv::imshow("Lenna", img);
+
+    // 키 입력을 기다림 (이게 없으면 창이 떴다가 바로 꺼집니다)
+    cv::waitKey(0);
+    //cv::destroyWindow("Lenna");
+    return 0;
+}*/
+
+int main() {
+
+    //show1();
+    show2();
+}
+
+// 프로그램 실행: <Ctrl+F5> 또는 [디버그] > [디버깅하지 않고 시작] 메뉴
+// 프로그램 디버그: <F5> 키 또는 [디버그] > [디버깅 시작] 메뉴
+
+// 시작을 위한 팁: 
+//   1. [솔루션 탐색기] 창을 사용하여 파일을 추가/관리합니다.
+//   2. [팀 탐색기] 창을 사용하여 소스 제어에 연결합니다.
+//   3. [출력] 창을 사용하여 빌드 출력 및 기타 메시지를 확인합니다.
+//   4. [오류 목록] 창을 사용하여 오류를 봅니다.
+//   5. [프로젝트] > [새 항목 추가]로 이동하여 새 코드 파일을 만들거나, [프로젝트] > [기존 항목 추가]로 이동하여 기존 코드 파일을 프로젝트에 추가합니다.
+//   6. 나중에 이 프로젝트를 다시 열려면 [파일] > [열기] > [프로젝트]로 이동하고 .sln 파일을 선택합니다.
+
+#include "opencv2/opencv.hpp"
+
+void show1() {
+
+	cv::Mat image1 = cv::imread("Lenna.png");
+	cv::Mat image2 = cv::imread("dog.jpg");
+	cv::Mat image3;
+	cv::Mat image4;
+
+	image3 = image1.clone();
+
+	
+	if (image1.empty() or image2.empty()) {
+
+		std::cerr << "파일들이 없음" << "\n";
+		return;
+	}
+	std::cout << "몇 차원:  " << image1.dims<<"\n";
+	std::cout << "열(cols): " << image1.cols << "\n";
+	std::cout << "행(rows): " << image1.rows << "\n";
+	
+	std::cout << "몇 차원:  " << image2.dims << "\n";
+	std::cout << "열(cols): " << image2.cols << "\n";
+	std::cout << "행(rows): " << image2.rows << "\n";
+
+	cv::namedWindow("LENNA");
+	cv::imshow("LENNA", image3);
+
+	cv::waitKey();
+	cv::destroyWindow("LENNA");
+
+	cv::namedWindow("dog");
+	cv::imshow("dog", image2);
+
+	cv::waitKey();
+	cv::destroyWindow("dog");
+
+}
+
+void show2() {
+
+	cv::namedWindow("color");
+	/*
+	for (int i = 0; i < 256; ++i) {
+		cv::Mat image(512, 512, CV_8UC3, cv::Scalar(255-i,255- i,255- i));	//Scalar(blue,green,red)
+		cv::imshow("color", image);
+		cv::waitKey(10);
+
+	}
+	*/
+	cv::Mat image2(1024, 1024, CV_8UC1);
+	cv::imshow("color", image2);
+	cv::waitKey(0);
+	
+}
+
