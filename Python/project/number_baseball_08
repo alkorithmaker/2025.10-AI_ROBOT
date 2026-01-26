@@ -1,0 +1,334 @@
+
+# 0. 딥러닝 모델 학습
+# 1. cv 알고리즘 작성
+# 2. cv와 딥러닝 연결
+# 3. 숫자 야구 알고리즘 작성
+# 4. cv 네모칸 색상 변경
+# 5. cv 숫자 시각적 표현
+# 6. cv 야구볼 시각적 표현
+# 7. cv 성공 , 실패 표현
+#----- 추가 아이디어-----
+# 8. 중복 입력 방지
+# 9. 이진화 가중치 부여
+
+import cv2 as cv
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+import matplotlib.pyplot as plt
+
+# 파라미터 불러오기
+load_model = keras.models.load_model("my_dlm_model.keras")
+
+cap =cv.VideoCapture(0)
+if not cap.isOpened():
+    print("캠이 없습니다.")
+    exit()
+
+green_timer = 0
+yellow_timer = 0
+ball_timer = 0
+
+# 넘파이 중복없는 4자리 수
+succ_num = np.random.choice(10, size=4, replace=False)
+
+print('>>>>>>>>>>>>>>>>>',succ_num)
+
+
+#예측 횟수
+trial=15
+
+# 예측 번호 넘파이 초기화로 선언
+guess_num = np.zeros(4, dtype=int)
+idx = 0  # 현재 몇 번째 숫자를 채울지 가리키는 인덱스
+fail_count = 0
+print('>>>>>>>>>>>>>>>>>',guess_num)
+
+# 예측번호 저장 및 출력
+guess_save = np.full((trial+1,7),-1, dtype=int)
+next_idx = 0
+trial_index = 0
+
+# 초기화 check
+#print(guess_save)
+
+# 성공 (True로 바꾸면 강제 성공)
+succ_game = False
+
+
+
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("프레임이 없습니다.")
+        break
+    cv.namedWindow('Number Baseball Game', cv.WINDOW_NORMAL)
+    flip_frame = cv.flip(frame, 1)  # 좌우반전
+    height, width , _ = frame.shape
+    center_x, center_y = int(width/2), int(height/2)
+
+    # 네모칸
+    roi_half_size = 110
+    roi = flip_frame[center_y - roi_half_size:center_y + roi_half_size, center_x - roi_half_size:center_x + roi_half_size]
+
+    # 네모칸 보여주기
+    if green_timer > 0 :
+        roi_color = (0, 255, 0)     # 초록색
+        green_timer -= 1            # 루프마다 1씩 감소
+
+    elif yellow_timer > 0 :
+        roi_color = (0, 255, 255)   # 노란색
+        yellow_timer -= 1           # 루프마다 1씩 감소
+
+    else:
+        roi_color = (0, 0, 255) # 평상시 빨간색
+
+    # 네모 색 출력
+    cv.rectangle(flip_frame,(center_x - roi_half_size,center_y - roi_half_size),(center_x + roi_half_size,center_y + roi_half_size),roi_color,2)
+
+
+    # c버튼 설명
+    y_start = 450
+    y_end = y_start + 20  # 박스 자체의 높이는 20픽셀
+    x_start, x_end = 500, 630 # 너비도 조금 슬림하게
+
+    if y_end < height:
+        # 반투명 배경
+        sub_roi = flip_frame[y_start:y_end, x_start:x_end]
+        rect = np.zeros(sub_roi.shape, dtype=np.uint8)
+        res = cv.addWeighted(sub_roi, 0.6, rect, 0.4, 0)
+        flip_frame[y_start:y_end, x_start:x_end] = res
+
+        display_text = f"Press 'C' to Capture"
+
+
+        cv.putText(flip_frame, display_text, (x_start + 5, y_start + 15),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+
+    font_scale = 0.4
+    # 기록 화면 출력 로직
+    for i in range(trial_index + 1):  # 현재 시도 중인 줄까지 표시
+        # 만약 아직 한 번도 완료 안 했고(trial_index=0), 첫 숫자도 안 찍었다면 패스
+        if i == trial_index and idx == 0 and trial_index == 0:
+            continue
+
+        # [수정] 한 줄 높이를 25픽셀로 줄임
+        line_height = 25
+        y_start = 10 + (i * line_height)
+        y_end = y_start + 20  # 박스 자체의 높이는 20픽셀
+        x_start, x_end = 10, 160 # 너비도 조금 슬림하게
+
+        if y_end < height:
+            # 반투명 배경
+            sub_roi = flip_frame[y_start:y_end, x_start:x_end]
+            rect = np.zeros(sub_roi.shape, dtype=np.uint8)
+            res = cv.addWeighted(sub_roi, 0.7, rect, 0.3, 0)
+            flip_frame[y_start:y_end, x_start:x_end] = res
+
+            # 데이터 정리
+            row = guess_save[i]
+            nums_str = "".join([str(row[n]) if row[n] != -1 else "_" for n in range(4)])
+            result_str = f"|{row[4]}S {row[5]}B {row[6]}0" if row[4] != -1 else ""
+
+
+            display_text = f"#{i+1}[{nums_str}]{result_str}"
+
+            cv.putText(flip_frame, display_text, (x_start + 5, y_start + 15),
+                       cv.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 1)
+
+
+
+    # 화면 출력
+    cv.imshow('Number Baseball Game', flip_frame)
+
+    # 게임 실패 종료
+    if trial_index >=trial:
+        text = "GAME OVER"
+        font = cv.FONT_HERSHEY_DUPLEX
+        font_scale = 2.5
+        thickness = 4
+
+        # 2. 텍스트의 실제 가로/세로 크기 계산
+        # size[0]은 (너비, 높이), size[1]은 baseline(글자 밑 여백)
+        size = cv.getTextSize(text, font, font_scale, thickness)[0]
+        text_w, text_h = size[0], size[1]
+
+        # 3. 진짜 중앙 좌표 계산 (화면 중앙 - 글자 절반)
+        text_x = center_x - (text_w // 2)
+        text_y = center_y + (text_h // 2)
+
+        cv.putText(flip_frame, text, (text_x, text_y), font, font_scale, (0, 0, 255), thickness)
+
+        cv.imshow('Number Baseball Game', flip_frame)
+        cv.waitKey(10000)
+        break
+
+    # 게임 성공
+    if succ_game==True:
+        text = "GAME CLEAR"
+        font = cv.FONT_HERSHEY_DUPLEX
+        font_scale = 2.5
+        thickness = 4
+
+        # 2. 텍스트의 실제 가로/세로 크기 계산
+        # size[0]은 (너비, 높이), size[1]은 baseline(글자 밑 여백)
+        size = cv.getTextSize(text, font, font_scale, thickness)[0]
+        text_w, text_h = size[0], size[1]
+
+        # 3. 진짜 중앙 좌표 계산 (화면 중앙 - 글자 절반)
+        text_x = center_x - (text_w // 2)
+        text_y = center_y + (text_h // 2)
+
+        cv.putText(flip_frame, text, (text_x, text_y), font, font_scale, (0, 215, 255), thickness)
+
+        cv.imshow('Number Baseball Game', flip_frame)
+        cv.waitKey(10000)
+        break
+
+
+    # 키를 받으면
+    key = cv.waitKey(1) & 0xFF
+    if key == ord('c' or 'C'): # c누르면 캡처
+
+        gray_img = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
+        gray_img= np.flip(gray_img,1)
+        cv.imwrite("gray_img.png",gray_img)
+        gaussian_blur = cv.GaussianBlur(gray_img,(5,5),0)
+
+
+        # 이진화
+        _,otsu_threshold = cv.threshold(gaussian_blur , 0 , 255 , cv.THRESH_BINARY + cv.THRESH_OTSU)
+
+        cv.imshow('1. otsu_threshold',otsu_threshold)
+
+        ### Morph ### 배경 1 >> 글자 0
+        kernel = np.ones((3,3),np.uint8)
+
+        # 글자를 굵게 만듬
+        erosion = cv.erode(otsu_threshold,kernel,iterations = 5)
+        cv.imshow('2. erode',erosion)
+        cv.imwrite('digit_binary_img.png',erosion)
+
+        # 이미지 자르기
+        img = cv.imread('digit_binary_img.png',cv.IMREAD_UNCHANGED)
+        h, w = img.shape[:2]
+        crop_size = 2*roi_half_size - 20
+        cx, cy = w//2, h//2
+        half = crop_size // 2
+
+        x1,x2 = cx-half, cx+half
+        y1,y2 = cy-half, cy+half
+
+        # 경계면 설정
+        x1 =max(0,x1)
+        y1 =max(0,y1)
+        x2 =min(w,x2)
+        y2 =min(h,y2)
+
+        cropped_img = img[y1:y2,x1:x2]
+        cv.imshow('3. cropped_img',cropped_img)
+
+        # 이미지 반전 >> 딥러닝 배경 0 >> 글자 1
+        reversed_img = cv.bitwise_not(cropped_img)
+        cv.imshow('4. reversed_img',reversed_img)
+
+        # 이미지 28 * 28 만들기
+        resized_img = cv.resize(reversed_img,(28,28))
+        cv.imwrite('num_img.png',resized_img)
+        cv.imshow('5. resized_img',resized_img)
+
+        # 정규화
+        binary_img = (resized_img.astype('float32') * 1.2) / 255.0  # 1.2배 가중치
+        binary_img = np.clip(binary_img, 0, 1)  # 1을 넘는 값은 1로 고정
+        #print(binary_img) # check
+        cv.imshow('6. binary_img',binary_img)
+        print('-----------------------------------------------')
+
+        # 딥러닝 알고리즘 이용
+        pred_num = load_model.predict(binary_img[np.newaxis, :, :])
+
+        # 딥러닝 예측 확률값
+        print(pred_num) # check
+
+        # 딥러닝 예측
+        print(pred_num.argmax())
+        result = np.argmax(pred_num)
+
+
+
+
+        # 배열에 숫자 입력
+        if result in guess_num[:idx]:   # 중복 숫자가 있으면 그냥 아무것도 안하고 넘어감
+
+            print("중복된 숫자입니다! 다시 찍으세요.")
+            yellow_timer = 15
+            roi_color = (0, 255, 255)
+
+        else:
+            # 중복이 아닐 때만 저장하고 칸 이동
+            guess_num[idx] = result
+            guess_save[trial_index][next_idx] = result
+
+            print(f"[{idx+1}/4] 입력 성공: {result}")
+            idx += 1
+            next_idx += 1
+            green_timer =15
+            roi_color = (0, 255, 0)
+
+        # print(guess_save) # check
+
+        # 4자리가 모두 찼을 때 판정 로직
+        if idx == 4:
+            print('-----------------------------------------')
+            print(f"최종 입력: {guess_num} vs 정답: {succ_num}")
+
+
+            # 넘파이 벡터 연산으로 S/B 판정
+            strike = np.sum(guess_num == succ_num)
+            guess_save[trial_index][next_idx]=strike
+            next_idx+=1
+
+            # intersect1d는 교집합(숫자가 포함된 개수)을 찾아줌
+            total_match = len(np.intersect1d(guess_num, succ_num))
+            ball = total_match - strike
+            guess_save[trial_index][next_idx]=ball
+            next_idx+=1
+
+            # 나머지 out
+            out = 4-strike-ball
+            guess_save[trial_index][next_idx]=out
+            next_idx+=1
+
+            #print(guess_save) #check
+
+            if strike == 4:
+                print("★ 정답입니다! 게임 종료 ★")
+
+                succ_game=True
+            else:
+                fail_count += 1
+                print(f"결과: {strike}S {ball}B {out}O | 실패 횟수: {fail_count}")
+                print("다시 4자리를 촬영하세요.")
+
+                # 다음 도전을 위해 넘파이 배열 초기화 및 인덱스 리셋
+                guess_num.fill(0)
+                idx = 0
+                next_idx=0
+                trial_index +=1
+
+            print('-----------------------------------------')
+
+    # -------------------if문 끝----------------
+    # esc 종료
+    if cv.waitKey(1) == 27:
+        break
+
+
+
+
+# -------------------while문 끝--------------------------------
+cap.release()
+cv.destroyAllWindows()
+
