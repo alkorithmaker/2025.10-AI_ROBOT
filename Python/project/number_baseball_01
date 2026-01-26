@@ -1,0 +1,77 @@
+import cv2 as cv
+import numpy as np
+
+cap =cv.VideoCapture(0)
+if not cap.isOpened():
+    print("캠이 없습니다.")
+    exit()
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("프레임이 없습니다.")
+        break
+    flip_frame = cv.flip(frame, 1)  # 좌우반전
+    height, width , _ = frame.shape
+    center_x, center_y = int(width/2), int(height/2)    # 중앙
+    roi = flip_frame[center_y - 150:center_y + 150, center_x - 150:center_x + 150] # 300 * 300 크기의 roi생성
+
+    # 네모칸 보여주기
+    cv.rectangle(flip_frame,(center_x - 150,center_y - 150),(center_x + 150,center_y + 150),(0,0,255),2)
+
+    # 화면 출력
+    cv.imshow('cam',flip_frame)
+
+    # 키를 받으면
+    key = cv.waitKey(1) & 0xFF
+    if key == ord('c' or 'C'): # c누르면 캡처
+        gray_img = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
+        gray_img= np.flip(gray_img,1)
+        cv.imwrite("gray_img.png",gray_img)
+        gaussian_blur = cv.GaussianBlur(gray_img,(5,5),3)
+
+        # 2진화
+        _,otsu_threshold = cv.threshold(gaussian_blur , 0 , 255 , cv.THRESH_BINARY + cv.THRESH_OTSU)
+
+        cv.imshow('1. otsu_threshold',otsu_threshold)
+
+        ### Morph ### 배경 1 >> 글자 0
+        kernel = np.ones((5,5),np.uint8)
+
+        # 글자를 굵게 만듬
+        erosion = cv.erode(otsu_threshold,kernel,iterations = 5)
+        cv.imshow('2. erode',erosion)
+        cv.imwrite('digit_binary_img.png',erosion)
+
+        # 이미지 자르기
+        img = cv.imread('digit_binary_img.png',cv.IMREAD_UNCHANGED)
+        h, w = img.shape[:2]
+        crop_size = 280
+        cx, cy = w//2, h//2
+        half = crop_size // 2
+
+        x1,x2 = cx-half, cx+half
+        y1,y2 = cy-half, cy+half
+
+        # 경계면 설정
+        x1 =max(0,x1)
+        y1 =max(0,y1)
+        x2 =min(w,x2)
+        y2 =min(h,y2)
+
+        cropped_img = img[y1:y2,x1:x2]
+        cv.imshow('3. cropped_img',cropped_img)
+
+        # 이미지 반전 >> 딥러닝 배경 0 >> 글자 1
+        reversed_img = cv.bitwise_not(cropped_img)
+        cv.imshow('4. reversed_img',reversed_img)
+
+        
+
+    # esc 종료
+    if cv.waitKey(1) == 27:
+        break
+
+# -------------------while--------------------------------
+cap.release()
+cv.destroyAllWindows()
+
