@@ -1,0 +1,44 @@
+python3 -c "
+import random
+
+WORLD_FILE = '/home/robot/robot_ws/src/my_project/worlds/my_obstacle.world'
+NUM_PILLARS = 900
+
+header = \"\"\"<?xml version='1.0' ?>
+<sdf version='1.5'>
+  <world name='default'>
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+\"\"\"
+
+footer = \"\"\"  </world>
+</sdf>\"\"\"
+
+with open(WORLD_FILE, 'w') as f:
+    f.write(header)
+    for i in range(NUM_PILLARS):
+        # Gazebo 중앙 격자 영역 
+        x = round(random.uniform(-10, 10), 2)
+        y = round(random.uniform(-10, 10), 2)
+        
+        # 로봇이 처음 소환되는 중앙(0,0) 주변은 비워두기 
+        if abs(x) < 0.5 and abs(y) < 0.5:
+            continue
+
+        pillar = f\"\"\"
+    <model name='p{i}'>
+      <static>1</static>
+      <pose>{x} {y} 0.5 0 0 0</pose>
+      <link name='l'>
+        <collision name='c'><geometry><cylinder><radius>0.1</radius><length>1</length></cylinder></geometry></collision>
+        <visual name='v'>
+          <geometry><cylinder><radius>0.1</radius><length>1</length></cylinder></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material>
+        </visual>
+      </link>
+    </model>\"\"\"
+        f.write(pillar)
+    f.write(footer)
+
+print(' 중앙 격자 구역 기둥 랜덤 생성 완료!')
+"
