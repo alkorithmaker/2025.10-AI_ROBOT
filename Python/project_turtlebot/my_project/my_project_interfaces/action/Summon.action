@@ -1,0 +1,9 @@
+# Goal: 로봇이 갈 목표 좌표
+float32 x
+float32 y
+---
+# Result: 이동 성공 여부
+bool success
+---
+# Feedback: 남은 거리
+float32 distance_remaining
